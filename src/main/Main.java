@@ -17,5 +17,11 @@ public class Main {
 		System.out.println(new User().where("name = ?", "João"));
 		
 		System.out.println(new User().getTasks());
+		
+		Task t = new Task();
+		t.user_id = 1;
+		t.eagerLoad();
+		
+		System.out.println(t.getUser());
 	}
 }

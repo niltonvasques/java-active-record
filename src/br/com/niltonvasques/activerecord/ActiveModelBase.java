@@ -2,8 +2,12 @@ package br.com.niltonvasques.activerecord;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
+
+import br.com.niltonvasques.activerecord.sql.ActiveModelSQL;
+import br.com.niltonvasques.activerecord.sql.SQLReflect;
 
 public abstract class ActiveModelBase<T extends ActiveModelBase> {
 	
@@ -15,10 +19,6 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 	public List<T> getAll(){
 		return where("active = 1");
 	}
-	
-	public List<T> where(String sql, Object... args){
-		return delegateQueryToDatabase(sql, args);
-	}	
 
 	public T find(int id){
 		return where("id = ?", id).get(0);
@@ -37,48 +37,33 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 		return id == 0;
 	}
 	
-	private boolean insert(){
-		String sqlInsert = "INSERT INTO "+getType().getSimpleName()+" ";
-		sqlInsert += "(";
-		List<Field> fields = getFieldsWithoutId();
-		String values = "VALUES (";
-		for(int i = 0; i < fields.size(); i++){
-			if(i > 0) {
-				sqlInsert += ", ";
-				values += ", ";
-			}
-			Field f = fields.get(i);
-			sqlInsert += f.getName();
-			try {
-				values += f.get(this);
-			} catch (IllegalArgumentException | IllegalAccessException e) {
-				e.printStackTrace();
+	public List<Field> getFieldsWithoutId(){
+		List<Field> fieldsWithoutId = new ArrayList<Field>();
+		Field[] fields = getType().getFields();
+		for(int i = 0; i < fields.length; i++){
+			Field f = fields[i];
+			Class<?> t = f.getType();
+			if(isValidType(t) && !f.getName().equals("id")){
+				fieldsWithoutId.add(f);				
 			}
 		}
-		sqlInsert += ") "+values;
-		sqlInsert += ");";
-		System.err.println(sqlInsert);
-		return delegateRawSQLToDatabase(sqlInsert);
+		return fieldsWithoutId;
 	}
 	
-	private boolean update(){
-		String sqlUpdate = "UPDATE "+getType().getSimpleName()+" ";
-		sqlUpdate += "SET ";
-		List<Field> fields = getFieldsWithoutId();
-		for(int i = 0; i < fields.size(); i++){
-			if(i > 0) {
-				sqlUpdate += ", ";
-			}
-			Field f = fields.get(i);
-			try {
-				sqlUpdate += f.getName()+"="+f.get(this);
-			} catch (IllegalArgumentException | IllegalAccessException e) {
-				e.printStackTrace();
-			}
+	public boolean isValidType(Class<?> t){
+		return (t == String.class || t == boolean.class || t == int.class || t == float.class || t == double.class 
+				|| t == long.class);
+	}
+	
+	public List<Field> getAssociations(){
+		List<Field> associationsFields = new ArrayList<Field>();
+		Field[] fields = getType().getFields();
+		for(int i = 0; i < fields.length; i++){
+			Field f = fields[i];
+			if(!f.getName().matches("_id$"))
+				associationsFields.add(f);
 		}
-		sqlUpdate += " WHERE id = "+id+";";
-		System.err.println(sqlUpdate);
-		return delegateRawSQLToDatabase(sqlUpdate);
+		return associationsFields;
 	}
 	
 
@@ -99,51 +84,35 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 		return obj;
 	}
 	
-	private List<Field> getFieldsWithoutId(){
-		List<Field> fieldsWithoutId = new ArrayList<Field>();
-		Field[] fields = getType().getFields();
-		for(int i = 0; i < fields.length; i++){
-			Field f = fields[i];
-			Class<?> t = f.getType();
-			if(isValidType(t) && !f.getName().equals("id")){
-				fieldsWithoutId.add(f);				
-			}
-		}
-		return fieldsWithoutId;
-	}
-	
-	private boolean isValidType(Class<?> t){
-		return (t == String.class || t == boolean.class || t == int.class || t == float.class || t == double.class 
-				|| t == long.class);
-	}
-	
-	private List<Field> getAssociations(){
-		List<Field> associationsFields = new ArrayList<Field>();
-		Field[] fields = getType().getFields();
-		for(int i = 0; i < fields.length; i++){
-			Field f = fields[i];
-			if(!f.getName().matches("_id$"))
-				associationsFields.add(f);
-		}
-		return associationsFields;
-	}
-	
-	public void populate(){
+
+	public void eagerLoad(){
 		List<Field> assoc = getAssociations();
 		for(int i = 0; i < assoc.size(); i++){
 			try {
-				Object object = Class.forName(assoc.get(i).getName()).getConstructor(String.class).newInstance();
-			} catch (InstantiationException | IllegalAccessException
-					| IllegalArgumentException | InvocationTargetException
-					| NoSuchMethodException | SecurityException
-					| ClassNotFoundException e) {
+				load(assoc.get(0).getName().replaceAll("_id$", ""));
+			} catch(Exception e) {
 				e.printStackTrace();
 			}			
 		}
 	}
 	
+	private void load(String name){
+		try {
+			Field idField = this.getType().getField(name+"_id");			
+			Field field = this.getType().getDeclaredField(name);
+			if(idField.getInt(this) == 0) return;
+			Object obj = ((ActiveModelBase)field.getType().newInstance()).find(idField.getInt(this));
+			field.setAccessible(true);
+			field.set(this, obj);
+		} catch (InstantiationException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	protected abstract T newInstance();
 	protected abstract Class<T> getType();
-	protected abstract List<T> delegateQueryToDatabase(String sql, Object... args);
-	protected abstract boolean delegateRawSQLToDatabase(String sql);
+	protected abstract boolean insert();
+	protected abstract boolean update();
+	public abstract List<T> where(String whereClause, Object... args);
 }

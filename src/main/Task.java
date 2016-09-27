@@ -19,8 +19,6 @@ public class Task extends Model<Task>{
 	}
 	
 	public User getUser(){
-		if(user_id != 0 && user == null)
-			user = new User().find(user_id);
 		return user;
 	}
 
