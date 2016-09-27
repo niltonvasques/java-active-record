@@ -1,4 +1,4 @@
-package main;
+package br.com.niltonvasques.sample;
 
 public class Task extends Model<Task>{
 	
@@ -20,6 +20,11 @@ public class Task extends Model<Task>{
 	
 	public User getUser(){
 		return user;
+	}
+	
+	public void setUser(User user){
+		this.user = user;
+		this.user_id = user.id;
 	}
 
 }

@@ -1,9 +1,7 @@
 package br.com.niltonvasques.activerecord.sql;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
-import main.Task;
 import br.com.niltonvasques.activerecord.ActiveModelBase;
 
 public abstract class ActiveModelSQL <T extends ActiveModelSQL> extends ActiveModelBase<T>{

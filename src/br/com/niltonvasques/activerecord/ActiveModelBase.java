@@ -60,7 +60,7 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 		Field[] fields = getType().getFields();
 		for(int i = 0; i < fields.length; i++){
 			Field f = fields[i];
-			if(!f.getName().matches("_id$"))
+			if(f.getName().matches(".*_id$"))
 				associationsFields.add(f);
 		}
 		return associationsFields;

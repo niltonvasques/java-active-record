@@ -1,4 +1,4 @@
-package main;
+package br.com.niltonvasques.sample;
 
 import java.util.ArrayList;
 import java.util.List;
