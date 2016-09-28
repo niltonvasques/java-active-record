@@ -25,7 +25,10 @@ public class SQLReflect {
 			Field f = fields.get(i);
 			sqlInsert += f.getName();
 			try {
-				values += f.get(object);
+				Object value = f.get(object);
+				if(value != null && f.getType() == String.class) values += "'";
+				values += castValue(value);
+				if(value != null && f.getType() == String.class) values += "'";
 			} catch (IllegalArgumentException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
@@ -54,5 +57,16 @@ public class SQLReflect {
 		sqlUpdate += " WHERE id = "+object.id+";";
 		System.err.println(sqlUpdate);
 		return sqlUpdate;
+	}
+	
+	public Object castValue(Object value){
+		if(value == null) return null;
+		
+//		System.out.println("castvalue: "+value+" class "+value.getClass());
+		if(value.getClass() == Boolean.class){
+			if(((boolean)value)) return 1;
+			else return 0;
+		}
+		return value;
 	}
 }

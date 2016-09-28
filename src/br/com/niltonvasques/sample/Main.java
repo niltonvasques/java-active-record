@@ -6,7 +6,7 @@ public class Main {
 
 	public static void main(String args[]){
 		//Fetching all
-		List<User> users = new User().getAll();
+		List<User> users = new User().all();
 		System.out.println(users);
 		
 		//Find by id

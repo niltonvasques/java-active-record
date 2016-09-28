@@ -19,7 +19,12 @@ public abstract class ActiveModelSQL <T extends ActiveModelSQL> extends ActiveMo
 	}
 	
 	@Override
-	public List<T> where(String sql, Object... args){
+	public List<T> where(String whereClause, Object... args){
+		for(int i = 0; i < args.length; i++){
+			whereClause = whereClause.replaceFirst("\\?", reflect.castValue(args[i]).toString());
+		}
+		String sql = "SELECT * FROM "+getType().getSimpleName()+" WHERE "+whereClause;
+		System.out.println(sql);
 		return delegateQueryToDatabase(sql, args);
 	}	
 	

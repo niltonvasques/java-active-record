@@ -1,22 +1,17 @@
 package br.com.niltonvasques.activerecord;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
-
-import br.com.niltonvasques.activerecord.sql.ActiveModelSQL;
-import br.com.niltonvasques.activerecord.sql.SQLReflect;
 
 public abstract class ActiveModelBase<T extends ActiveModelBase> {
 	
 	public int id;
 	public long createdAt;
 	public long updatedAt;
-	public boolean active;
+	public boolean active = true;
 		
-	public List<T> getAll(){
+	public List<T> all(){
 		return where("active = 1");
 	}
 
@@ -29,32 +24,39 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 	}
 	
 	public boolean save(){
-		if(isNew()) return insert();
+		updatedAt = System.currentTimeMillis();
+		if(isNew()) {
+			createdAt = System.currentTimeMillis();
+			return insert();
+		}
 		return update();
 	}
 	
+	public void eagerLoad(){
+		List<Field> assoc = getAssociations();
+		for(int i = 0; i < assoc.size(); i++){
+			try {
+				load(assoc.get(0).getName().replaceAll("_id$", ""));
+			} catch(Exception e) {
+				e.printStackTrace();
+			}			
+		}
+	}
+
 	public boolean isNew(){
 		return id == 0;
 	}
 	
-	public List<Field> getFieldsWithoutId(){
-		List<Field> fieldsWithoutId = new ArrayList<Field>();
-		Field[] fields = getType().getFields();
-		for(int i = 0; i < fields.length; i++){
-			Field f = fields[i];
-			Class<?> t = f.getType();
-			if(isValidType(t) && !f.getName().equals("id")){
-				fieldsWithoutId.add(f);				
-			}
-		}
-		return fieldsWithoutId;
-	}
-	
-	public boolean isValidType(Class<?> t){
-		return (t == String.class || t == boolean.class || t == int.class || t == float.class || t == double.class 
-				|| t == long.class);
-	}
-	
+	protected abstract T newInstance();
+
+	protected abstract Class<T> getType();
+
+	protected abstract boolean insert();
+
+	protected abstract boolean update();
+
+	public abstract List<T> where(String whereClause, Object... args);
+
 	public List<Field> getAssociations(){
 		List<Field> associationsFields = new ArrayList<Field>();
 		Field[] fields = getType().getFields();
@@ -85,17 +87,24 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 	}
 	
 
-	public void eagerLoad(){
-		List<Field> assoc = getAssociations();
-		for(int i = 0; i < assoc.size(); i++){
-			try {
-				load(assoc.get(0).getName().replaceAll("_id$", ""));
-			} catch(Exception e) {
-				e.printStackTrace();
-			}			
+	public List<Field> getFieldsWithoutId(){
+		List<Field> fieldsWithoutId = new ArrayList<Field>();
+		Field[] fields = getType().getFields();
+		for(int i = 0; i < fields.length; i++){
+			Field f = fields[i];
+			Class<?> t = f.getType();
+			if(isValidType(t) && !f.getName().equals("id")){
+				fieldsWithoutId.add(f);				
+			}
 		}
+		return fieldsWithoutId;
 	}
-	
+
+	public boolean isValidType(Class<?> t){
+		return (t == String.class || t == boolean.class || t == int.class || t == float.class || t == double.class 
+				|| t == long.class);
+	}
+
 	private void load(String name){
 		try {
 			Field idField = this.getType().getField(name+"_id");			
@@ -109,10 +118,4 @@ public abstract class ActiveModelBase<T extends ActiveModelBase> {
 			e.printStackTrace();
 		}
 	}
-	
-	protected abstract T newInstance();
-	protected abstract Class<T> getType();
-	protected abstract boolean insert();
-	protected abstract boolean update();
-	public abstract List<T> where(String whereClause, Object... args);
 }
